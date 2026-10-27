@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,151 +16,133 @@ import ReportScreen from './screens/ReportScreen';
 import AboutScreen from './screens/AboutScreen';
 import DatabaseService from './services/database';
 import SyncService from './services/syncService';
+import AboutButton from './components/AboutButton';
+import BrandLogo from './components/BrandLogo';
+import ConfirmDialog from './components/ConfirmDialog';
+import { colors, stackScreenOptions } from './theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Componente de Header com Avatar e Informações do Usuário
-const UserHeader = () => {
-  const { user } = useUser();
+const hidden = { headerShown: false };
+const headerRight = () => <AboutButton />;
+const headerLeft = () => <BrandLogo size={30} style={styles.headerLogo} />;
 
+const ChecklistsStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen name="ChecklistsMain" component={ChecklistsScreen} options={hidden} />
+    <Stack.Screen name="ChecklistTaking" component={ChecklistTakingScreen} options={hidden} />
+  </Stack.Navigator>
+);
+
+const ReportStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen name="ReportMain" component={ReportScreen} options={{ title: 'Relatórios', headerRight, headerLeft }} />
+  </Stack.Navigator>
+);
+
+const HistoryStack = () => (
+  <Stack.Navigator screenOptions={stackScreenOptions}>
+    <Stack.Screen name="HistoryMain" component={HistoryScreen} options={hidden} />
+    <Stack.Screen
+      name="HistoryDetail"
+      component={HistoryDetailScreen}
+      options={{ title: 'Detalhes do Checklist', headerRight }}
+    />
+  </Stack.Navigator>
+);
+
+const TAB_ICONS = {
+  Checklists: ['checkbox', 'checkbox-outline'],
+  Reports: ['document-text', 'document-text-outline'],
+  History: ['time', 'time-outline'],
+  Logout: ['log-out', 'log-out-outline'],
+};
+
+const TabIcon = ({ route, focused }) => {
+  const [filled, outline] = TAB_ICONS[route.name];
   return (
-    <View style={styles.headerContainer}>
-      <View style={styles.avatarContainer}>
-        <Ionicons name="person-circle" size={40} color="#fff" />
-      </View>
-      <View style={styles.headerInfo}>
-        <Text style={styles.headerName}>{user?.name}</Text>
-        <Text style={styles.headerDetails}>Mat. {user?.registration} | {user?.unit}</Text>
-      </View>
+    <View style={[styles.tabPill, focused && styles.tabPillActive]}>
+      <Ionicons
+        name={focused ? filled : outline}
+        size={22}
+        color={focused ? colors.primary : colors.muted}
+      />
     </View>
   );
 };
 
-const ChecklistsStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="ChecklistsMain"
-        component={ChecklistsScreen}
-        options={{
-          title: 'Checklists',
-          headerRight: () => <UserHeader />,
-        }}
-      />
-      <Stack.Screen
-        name="ChecklistTaking"
-        component={ChecklistTakingScreen}
-        options={{
-          title: 'Responder Checklist',
-          headerRight: () => <UserHeader />,
-        }}
-      />
-    </Stack.Navigator>
-  );
-};
+// A aba "Sair" não tem tela: o toque abre a confirmação em vez de navegar
+const EmptyScreen = () => null;
 
-const ReportStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="ReportMain"
-        component={ReportScreen}
-        options={{
-          title: 'Relatórios',
-          headerRight: () => <UserHeader />,
-        }}
-      />
-    </Stack.Navigator>
-  );
-};
+const MainTabs = () => {
+  const insets = useSafeAreaInsets();
+  const { logout } = useUser();
+  const [logoutVisible, setLogoutVisible] = React.useState(false);
 
-const HistoryStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Stack.Screen
-        name="HistoryMain"
-        component={HistoryScreen}
-        options={{
-          title: 'Histórico',
-          headerRight: () => <UserHeader />,
-        }}
-      />
-      <Stack.Screen
-        name="HistoryDetail"
-        component={HistoryDetailScreen}
-        options={{
-          title: 'Detalhes do Checklist',
-          headerRight: () => <UserHeader />,
-        }}
-      />
-    </Stack.Navigator>
-  );
-};
+  const confirmLogout = () => setLogoutVisible(true);
 
-const AboutStack = () => {
+  const handleLogout = () => {
+    setLogoutVisible(false);
+    logout();
+  };
+
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#007AFF',
+    <>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.muted,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: {
+          height: 64 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: insets.bottom + 6,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.line,
         },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
+        tabBarIcon: ({ focused }) => <TabIcon route={route} focused={focused} />,
+      })}
     >
-      <Stack.Screen
-        name="AboutMain"
-        component={AboutScreen}
-        options={{
-          title: 'Sobre',
-          headerRight: () => <UserHeader />,
+      <Tab.Screen name="Checklists" component={ChecklistsStack} options={{ tabBarLabel: 'Checklists' }} />
+      <Tab.Screen name="Reports" component={ReportStack} options={{ tabBarLabel: 'Relatórios' }} />
+      <Tab.Screen name="History" component={HistoryStack} options={{ tabBarLabel: 'Histórico' }} />
+      <Tab.Screen
+        name="Logout"
+        component={EmptyScreen}
+        options={{ tabBarLabel: 'Sair' }}
+        listeners={{
+          tabPress: (event) => {
+            event.preventDefault();
+            confirmLogout();
+          },
         }}
       />
-    </Stack.Navigator>
+    </Tab.Navigator>
+
+    <ConfirmDialog
+      visible={logoutVisible}
+      icon="log-out-outline"
+      destructive
+      title="Sair do aplicativo?"
+      message="Você precisará entrar novamente com seu nome, matrícula e unidade. Os checklists salvos neste aparelho continuam guardados."
+      confirmLabel="Sair"
+      onConfirm={handleLogout}
+      onCancel={() => setLogoutVisible(false)}
+    />
+    </>
   );
 };
 
 // Componente Principal que verifica login
 const MainApp = () => {
-  const { user, isLoading, logout } = useUser();
+  const { user, isLoading } = useUser();
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Carregando...</Text>
       </View>
     );
@@ -170,74 +153,14 @@ const MainApp = () => {
   }
 
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: 'gray',
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Checklists"
-        component={ChecklistsStack}
-        options={{
-          title: 'Checklists',
-          tabBarLabel: 'Checklists',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="checkbox-outline" color={color} size={size} />
-          ),
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="Reports"
-        component={ReportStack}
-        options={{
-          title: 'Relatórios',
-          tabBarLabel: 'Relatórios',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" color={color} size={size} />
-          ),
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryStack}
-        options={{
-          title: 'Histórico',
-          tabBarLabel: 'Histórico',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="time-outline" color={color} size={size} />
-          ),
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={AboutStack}
-        options={{
-          title: 'Sobre',
-          tabBarLabel: 'Sobre',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="information-circle-outline" color={color} size={size} />
-          ),
-          headerShown: false,
-        }}
-      />
-    </Tab.Navigator>
+    <Stack.Navigator screenOptions={stackScreenOptions}>
+      <Stack.Screen name="Tabs" component={MainTabs} options={hidden} />
+      <Stack.Screen name="About" component={AboutScreen} options={{ title: 'Sobre' }} />
+    </Stack.Navigator>
   );
 };
 
 export default function App() {
-  const [dbReady, setDbReady] = React.useState(false);
-
   useEffect(() => {
     // Inicializar banco de dados e serviços
     const initDatabase = async () => {
@@ -266,7 +189,6 @@ export default function App() {
         // Iniciar sincronização automática (a cada 5 minutos)
         SyncService.startAutoSync(5);
 
-        setDbReady(true);
         console.log('Database and sync services initialized in App.js');
       } catch (error) {
         console.error('Failed to initialize database:', error);
@@ -278,52 +200,44 @@ export default function App() {
   }, []);
 
   return (
-    <UserProvider>
-      <NavigationContainer>
-        <MainApp />
-        <StatusBar style="auto" />
-      </NavigationContainer>
-    </UserProvider>
+    <SafeAreaProvider>
+      <UserProvider>
+        <NavigationContainer>
+          <MainApp />
+          <StatusBar style="light" />
+        </NavigationContainer>
+      </UserProvider>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: colors.muted,
   },
-  headerContainer: {
-    flexDirection: 'row',
+  headerLogo: {
+    marginLeft: 16,
+  },
+  tabPill: {
+    width: 56,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
-    marginRight: 10,
+    justifyContent: 'center',
   },
-  avatarContainer: {
-    marginRight: 8,
+  tabPillActive: {
+    backgroundColor: colors.primaryTint,
   },
-  headerInfo: {
-    alignItems: 'flex-end',
-  },
-  headerName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  headerDetails: {
-    color: '#fff',
+  tabLabel: {
     fontSize: 11,
-    opacity: 0.9,
+    fontWeight: '700',
   },
 });

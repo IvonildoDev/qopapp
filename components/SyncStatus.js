@@ -86,7 +86,7 @@ const SyncStatus = ({ style }) => {
                     <Ionicons
                         name="refresh"
                         size={14}
-                        color="#007AFF"
+                        color="#0B3A8F"
                     />
                 </TouchableOpacity>
             )}
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     syncButton: {
         padding: 5,
         borderRadius: 10,
-        backgroundColor: '#e3f2fd',
+        backgroundColor: '#E4EDFF',
     },
 });
 

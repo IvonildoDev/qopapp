@@ -1,7 +1,21 @@
 {
   "expo": {
-    "name": "Qopapp",
+    "name": "Q&OP",
     "slug": "Qopapp",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "plugins": [
+      "@react-native-community/datetimepicker",
+      "expo-sharing",
+      "expo-sqlite",
+      "expo-status-bar",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O Q&OP usa a câmera para anexar fotos aos checklists.",
+          "photosPermission": "O Q&OP acessa suas fotos para anexá-las aos checklists."
+        }
+      ]
+    ]
   }
 }

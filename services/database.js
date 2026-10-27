@@ -96,6 +96,15 @@ class DatabaseService {
                 }
             }
 
+            // Matrícula e unidade de quem preencheu o checklist
+            const currentInfo = await this.db.getAllAsync("PRAGMA table_info(saved_checklists)");
+            for (const column of ['user_registration', 'user_unit', 'edited_at']) {
+                if (!currentInfo.some(info => info.name === column)) {
+                    await this.db.execAsync(`ALTER TABLE saved_checklists ADD COLUMN ${column} TEXT`);
+                    console.log(`Added ${column} column`);
+                }
+            }
+
             console.log('Database migration completed');
         } catch (error) {
             console.error('Error during database migration:', error);
@@ -207,6 +216,15 @@ class DatabaseService {
 
             const result = await this.db.runAsync(sql, params);
 
+            const hasUserColumns = tableInfo.some(column => column.name === 'user_registration')
+                && tableInfo.some(column => column.name === 'user_unit');
+            if (hasUserColumns) {
+                await this.db.runAsync(
+                    `UPDATE saved_checklists SET user_registration = ?, user_unit = ? WHERE id = ?`,
+                    [checklistData.userRegistration || '', checklistData.userUnit || '', result.lastInsertRowId]
+                );
+            }
+
             console.log('Checklist saved with ID:', result.lastInsertRowId);
             return result.lastInsertRowId;
         } catch (error) {
@@ -240,6 +258,9 @@ class DatabaseService {
                 completedAt: row.completed_at,
                 userName: row.user_name,
                 userEmail: row.user_email,
+                userRegistration: row.user_registration || '',
+                userUnit: row.user_unit || '',
+                editedAt: row.edited_at || null,
                 createdAt: row.created_at
             }));
         } catch (error) {
@@ -269,10 +290,31 @@ class DatabaseService {
                 completedAt: result.completed_at,
                 userName: result.user_name,
                 userEmail: result.user_email,
+                userRegistration: result.user_registration || '',
+                userUnit: result.user_unit || '',
+                editedAt: result.edited_at || null,
                 createdAt: result.created_at
             };
         } catch (error) {
             console.error('Error getting checklist by ID:', error);
+            throw error;
+        }
+    }
+
+    // Atualizar respostas de um checklist existente; completed_at (data original) é preservada
+    async updateChecklist(id, { answers, observations, editedAt }) {
+        try {
+            await this.ensureInitialized();
+
+            await this.db.runAsync(
+                `UPDATE saved_checklists
+                 SET answers = ?, observations = ?, edited_at = ?
+                 WHERE id = ?`,
+                [JSON.stringify(answers), observations || '', editedAt, id]
+            );
+            console.log('Checklist updated:', id);
+        } catch (error) {
+            console.error('Error updating checklist:', error);
             throw error;
         }
     }

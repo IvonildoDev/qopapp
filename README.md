@@ -1,4 +1,4 @@
-# QOP App - Checklist Application
+# Q&OP - Checklist Application
 
 Aplicativo de checklists para operações logísticas desenvolvido em React Native.
 
@@ -8,7 +8,7 @@ Aplicativo de checklists para operações logísticas desenvolvido em React Nati
 
 ## Descrição
 
-QOP App é um aplicativo móvel para realizar checklists operacionais de veículos e cargas, com funcionalidades de:
+Q&OP é um aplicativo móvel para realizar checklists operacionais de veículos e cargas, com funcionalidades de:
 
 - Preenchimento de checklists (Pré-Operacional, Carga, Caminhão)
 - Armazenamento local em SQLite
@@ -160,5 +160,5 @@ O aplicativo utiliza SQLite para armazenamento local com a seguinte estrutura:
 
 ## Licença
 
-© 2025 QOP App - Todos os direitos reservados
+© 2025 Q&OP - Todos os direitos reservados
 Desenvolvido por Ivonildo Lima

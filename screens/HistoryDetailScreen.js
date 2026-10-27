@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Modal, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DatabaseService from '../services/database';
-import { formatDate } from '../utils/dateUtils';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 
 const HistoryDetailScreen = ({ route, navigation }) => {
     const { checklistId } = route.params;
     const [checklist, setChecklist] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [previewUri, setPreviewUri] = useState(null);
 
     useEffect(() => {
         loadChecklistDetails();
@@ -56,21 +57,43 @@ const HistoryDetailScreen = ({ route, navigation }) => {
 
         return (
             <View key={index} style={styles.answerItem}>
-                <View style={styles.questionContainer}>
-                    <Text style={styles.questionNumber}>{index + 1}.</Text>
-                    <Text style={styles.questionText}>{answer.question}</Text>
-                </View>
-                <View style={styles.answerContainer}>
-                    <View style={[styles.answerBadge, getAnswerStyle(answer.answer)]}>
-                        <Ionicons
-                            name={getAnswerIcon(answer.answer)}
-                            size={16}
-                            color="#333"
-                            style={styles.answerIcon}
-                        />
-                        <Text style={styles.answerText}>{getAnswerText(answer.answer)}</Text>
+                <View style={styles.answerRow}>
+                    <View style={styles.questionContainer}>
+                        <Text style={styles.questionNumber}>{index + 1}.</Text>
+                        <Text style={styles.questionText}>{answer.question}</Text>
+                    </View>
+                    <View style={styles.answerContainer}>
+                        <View style={[styles.answerBadge, getAnswerStyle(answer.answer)]}>
+                            <Ionicons
+                                name={getAnswerIcon(answer.answer)}
+                                size={16}
+                                color="#333"
+                                style={styles.answerIcon}
+                            />
+                            <Text style={styles.answerText}>{getAnswerText(answer.answer)}</Text>
+                        </View>
                     </View>
                 </View>
+                {answer.note ? (
+                    <View style={styles.noteBox}>
+                        <Ionicons name="chatbox-ellipses-outline" size={16} color="#8E1B1B" />
+                        <Text style={styles.noteText}>{answer.note}</Text>
+                    </View>
+                ) : null}
+                {answer.photos?.length ? (
+                    <View style={styles.photoRow}>
+                        {answer.photos.map((uri) => (
+                            <TouchableOpacity
+                                key={uri}
+                                onPress={() => setPreviewUri(uri)}
+                                accessibilityRole="button"
+                                accessibilityLabel="Ampliar foto"
+                            >
+                                <Image source={{ uri }} style={styles.photoThumb} />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                ) : null}
             </View>
         );
     };
@@ -78,7 +101,7 @@ const HistoryDetailScreen = ({ route, navigation }) => {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color="#0B3A8F" />
                 <Text style={styles.loadingText}>Carregando detalhes...</Text>
             </View>
         );
@@ -103,10 +126,24 @@ const HistoryDetailScreen = ({ route, navigation }) => {
                         <Ionicons name="person-outline" size={16} color="#666" />
                         <Text style={styles.infoText}>{checklist.userName}</Text>
                     </View>
-                    <View style={styles.infoRow}>
-                        <Ionicons name="mail-outline" size={16} color="#666" />
-                        <Text style={styles.infoText}>{checklist.userEmail}</Text>
-                    </View>
+                    {checklist.userRegistration ? (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="card-outline" size={16} color="#666" />
+                            <Text style={styles.infoText}>Matrícula {checklist.userRegistration}</Text>
+                        </View>
+                    ) : null}
+                    {checklist.userUnit ? (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="business-outline" size={16} color="#666" />
+                            <Text style={styles.infoText}>Unidade {checklist.userUnit}</Text>
+                        </View>
+                    ) : null}
+                    {checklist.userEmail ? (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="mail-outline" size={16} color="#666" />
+                            <Text style={styles.infoText}>{checklist.userEmail}</Text>
+                        </View>
+                    ) : null}
                     <View style={styles.infoRow}>
                         <Ionicons name="calendar-outline" size={16} color="#666" />
                         <Text style={styles.infoText}>
@@ -119,6 +156,14 @@ const HistoryDetailScreen = ({ route, navigation }) => {
                             Criado em: {formatDate(checklist.createdAt)}
                         </Text>
                     </View>
+                    {checklist.editedAt ? (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="create-outline" size={16} color="#666" />
+                            <Text style={styles.infoText}>
+                                Editado em: {formatDateTime(checklist.editedAt)}
+                            </Text>
+                        </View>
+                    ) : null}
                 </View>
 
                 {/* Estatísticas */}
@@ -166,6 +211,22 @@ const HistoryDetailScreen = ({ route, navigation }) => {
                     </View>
                 ) : null}
             </ScrollView>
+
+            <Modal visible={Boolean(previewUri)} transparent animationType="fade" onRequestClose={() => setPreviewUri(null)}>
+                <View style={styles.previewBackdrop}>
+                    {previewUri ? (
+                        <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
+                    ) : null}
+                    <TouchableOpacity
+                        style={styles.previewClose}
+                        onPress={() => setPreviewUri(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Fechar"
+                    >
+                        <Ionicons name="close" size={28} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -173,7 +234,7 @@ const HistoryDetailScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     scrollView: {
         flex: 1,
@@ -185,7 +246,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     loadingText: {
         marginTop: 10,
@@ -196,7 +257,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     emptyText: {
         marginTop: 10,
@@ -249,7 +310,7 @@ const styles = StyleSheet.create({
     statNumber: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#007AFF',
+        color: '#0B3A8F',
     },
     statYes: {
         color: '#4CAF50',
@@ -279,14 +340,60 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 10,
         marginBottom: 10,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        gap: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
+    },
+    answerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    photoRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    photoThumb: {
+        width: 84,
+        height: 84,
+        borderRadius: 10,
+        backgroundColor: '#EDF0F5',
+    },
+    previewBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.92)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    previewImage: {
+        width: '100%',
+        height: '80%',
+    },
+    previewClose: {
+        position: 'absolute',
+        top: 48,
+        right: 20,
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noteBox: {
+        flexDirection: 'row',
+        gap: 8,
+        padding: 10,
+        borderRadius: 8,
+        backgroundColor: '#FDECEC',
+    },
+    noteText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#8E1B1B',
+        lineHeight: 20,
     },
     questionContainer: {
         flex: 1,
@@ -296,7 +403,7 @@ const styles = StyleSheet.create({
     questionNumber: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#007AFF',
+        color: '#0B3A8F',
         marginRight: 8,
     },
     questionText: {
@@ -341,7 +448,7 @@ const styles = StyleSheet.create({
         padding: 15,
         borderRadius: 10,
         borderLeftWidth: 4,
-        borderLeftColor: '#007AFF',
+        borderLeftColor: '#0B3A8F',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,

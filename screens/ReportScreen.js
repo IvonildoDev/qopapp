@@ -13,10 +13,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { formatDate } from '../utils/dateUtils';
+import { File, Paths } from 'expo-file-system';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 import { useUser } from '../context/UserContext';
 import DatabaseService from '../services/database';
+import PhotoService from '../services/photoService';
 import SyncStatus from '../components/SyncStatus';
+
+const escapeHtml = (value) =>
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
 const ReportScreen = ({ route, navigation }) => {
     const { checklistData } = route.params || {};
@@ -79,6 +88,18 @@ const ReportScreen = ({ route, navigation }) => {
                 </div>`;
             }
 
+            // Fotos por pergunta embutidas em base64 (o PDF não carrega arquivos locais)
+            const photoHtml = {};
+            for (const [index, answer] of reportData.answers.entries()) {
+                if (!answer.photos?.length) continue;
+                const images = [];
+                for (const uri of answer.photos) {
+                    const data = await PhotoService.toBase64(uri);
+                    if (data) images.push(`<img class="answer-photo" src="data:image/jpeg;base64,${data}" />`);
+                }
+                if (images.length) photoHtml[index] = `<div class="answer-photos">${images.join('')}</div>`;
+            }
+
             const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -92,21 +113,21 @@ const ReportScreen = ({ route, navigation }) => {
         .header {
             text-align: center;
             margin-bottom: 30px;
-            border-bottom: 2px solid #007AFF;
+            border-bottom: 2px solid #0B3A8F;
             padding-bottom: 20px;
         }
         .header h1 {
-            color: #007AFF;
+            color: #0B3A8F;
             margin: 0;
         }
         .user-info {
-            background-color: #f5f5f5;
+            background-color: #F3F5F8;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
         }
         .checklist-info {
-            background-color: #e3f2fd;
+            background-color: #E4EDFF;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -117,16 +138,44 @@ const ReportScreen = ({ route, navigation }) => {
         .answer-item {
             padding: 10px;
             border-bottom: 1px solid #eee;
+        }
+        .answer-row {
             display: flex;
             justify-content: space-between;
+            gap: 12px;
         }
         .answer-yes {
-            color: #4CAF50;
+            color: #1B7F4B;
             font-weight: bold;
         }
         .answer-no {
-            color: #F44336;
+            color: #C62828;
             font-weight: bold;
+        }
+        .answer-na {
+            color: #8A5300;
+            font-weight: bold;
+        }
+        .answer-photos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .answer-photo {
+            width: 160px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+        .answer-note {
+            margin-top: 6px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background-color: #FDECEC;
+            color: #8E1B1B;
+            font-size: 13px;
         }
         .observations {
             background-color: #fff3e0;
@@ -141,7 +190,7 @@ const ReportScreen = ({ route, navigation }) => {
             margin-top: 20px;
         }
         .photos-section h3 {
-            color: #007AFF;
+            color: #0B3A8F;
             margin-top: 0;
         }
         .photos-grid {
@@ -176,9 +225,9 @@ const ReportScreen = ({ route, navigation }) => {
     
     <div class="user-info">
         <h3>Informações do Usuário</h3>
-        <p><strong>Nome:</strong> ${reportData.userName || user?.name || 'N/A'}</p>
-        <p><strong>Matrícula:</strong> ${user?.registration || 'N/A'}</p>
-        <p><strong>Unidade:</strong> ${user?.unit || 'N/A'}</p>
+        <p><strong>Nome:</strong> ${escapeHtml(reportData.userName || user?.name || 'N/A')}</p>
+        <p><strong>Matrícula:</strong> ${escapeHtml(reportData.userRegistration || 'N/A')}</p>
+        <p><strong>Unidade:</strong> ${escapeHtml(reportData.userUnit || 'N/A')}</p>
     </div>
     
     <div class="checklist-info">
@@ -186,34 +235,51 @@ const ReportScreen = ({ route, navigation }) => {
         <p><strong>Tipo:</strong> ${reportData.checklistTitle}</p>
         <p><strong>Data de Realização:</strong> ${formatDate(reportData.completedAt)}</p>
         ${reportData.createdAt ? `<p><strong>Data de Salvamento:</strong> ${formatDate(reportData.createdAt)}</p>` : ''}
+        ${reportData.editedAt ? `<p><strong>Última edição:</strong> ${formatDateTime(reportData.editedAt)}</p>` : ''}
         <p><strong>Total de Perguntas:</strong> ${reportData.answers.length}</p>
     </div>
     
     <div class="answers-section">
         <h3>Respostas</h3>
-        ${reportData.answers.map((answer, index) =>
-                `<div class="answer-item">
-                <span><strong>${index + 1}.</strong> ${answer.question}</span>
-                <span class="answer-${answer.answer === 'SIM' ? 'yes' : 'no'}">${answer.answer}</span>
-            </div>`
-            ).join('')}
+        ${reportData.answers.map((answer, index) => {
+                const tone = answer.answer === 'SIM' ? 'yes' : answer.answer === 'NÃO' ? 'no' : 'na';
+                const label = answer.answer === 'NÃO RESPONDIDO' ? 'N/A' : answer.answer;
+                return `<div class="answer-item">
+                <div class="answer-row">
+                    <span><strong>${index + 1}.</strong> ${escapeHtml(answer.question)}</span>
+                    <span class="answer-${tone}">${escapeHtml(label)}</span>
+                </div>
+                ${answer.note ? `<div class="answer-note">Observação: ${escapeHtml(answer.note)}</div>` : ''}
+                ${photoHtml[index] || ''}
+            </div>`;
+            }).join('')}
     </div>
-    
+
     ${reportData.observations ? `
         <div class="observations">
             <h3>Observações</h3>
-            <p>${reportData.observations}</p>
+            <p>${escapeHtml(reportData.observations)}</p>
         </div>
     ` : ''}
 </body>
 </html>`;
 
-            const { uri } = await Print.printToFileAsync({
+            const { base64 } = await Print.printToFileAsync({
                 html: htmlContent,
-                base64: false,
+                base64: true,
             });
 
-            await Sharing.shareAsync(uri, {
+            // Copiar para o cache do app com um nome legível; o compartilhamento
+            // só lê arquivos de pastas que o app tem permissão para ler
+            // O conteúdo vem em base64 porque, no Expo Go, o app não consegue ler o
+            // arquivo gerado pelo expo-print (Missing 'READ' permission)
+            const fileName = `${reportData.checklistTitle}-${reportData.id}-${Date.now()}.pdf`
+                .replace(/[^\w.-]+/g, '_');
+            const pdfFile = new File(Paths.cache, fileName);
+            pdfFile.create({ overwrite: true });
+            pdfFile.write(base64, { encoding: 'base64' });
+
+            await Sharing.shareAsync(pdfFile.uri, {
                 mimeType: 'application/pdf',
                 dialogTitle: `Compartilhar ${reportData.checklistTitle}`,
             });
@@ -226,7 +292,22 @@ const ReportScreen = ({ route, navigation }) => {
         }
     };
 
+    const editChecklist = (item) => {
+        navigation.navigate('Checklists', {
+            screen: 'ChecklistTaking',
+            params: {
+                checklistId: item.checklistId,
+                checklistName: item.checklistTitle,
+                editId: item.id,
+            },
+        });
+    };
+
     const deleteChecklist = async (checklistId) => {
+        const photoUris = savedChecklists
+            .find((c) => c.id === checklistId)
+            ?.answers.flatMap((a) => a.photos || []) || [];
+
         Alert.alert(
             'Confirmar Exclusão',
             'Tem certeza que deseja excluir este checklist?',
@@ -238,6 +319,7 @@ const ReportScreen = ({ route, navigation }) => {
                     onPress: async () => {
                         try {
                             await DatabaseService.deleteChecklist(checklistId);
+                            PhotoService.remove(photoUris);
                             loadSavedChecklists();
                         } catch (error) {
                             console.error('Erro ao excluir checklist:', error);
@@ -274,16 +356,28 @@ const ReportScreen = ({ route, navigation }) => {
                         <Ionicons
                             name={getChecklistIcon(item.checklistId)}
                             size={24}
-                            color="#007AFF"
+                            color="#0B3A8F"
                         />
                         <Text style={styles.cardTitle}>{item.checklistTitle}</Text>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => deleteChecklist(item.id)}
-                        style={styles.deleteButton}
-                    >
-                        <Ionicons name="trash" size={20} color="#dc3545" />
-                    </TouchableOpacity>
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            onPress={() => editChecklist(item)}
+                            style={styles.deleteButton}
+                            accessibilityRole="button"
+                            accessibilityLabel="Editar checklist"
+                        >
+                            <Ionicons name="create-outline" size={22} color="#0B3A8F" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => deleteChecklist(item.id)}
+                            style={styles.deleteButton}
+                            accessibilityRole="button"
+                            accessibilityLabel="Excluir checklist"
+                        >
+                            <Ionicons name="trash" size={20} color="#dc3545" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <View style={styles.cardInfo}>
@@ -298,6 +392,14 @@ const ReportScreen = ({ route, navigation }) => {
                             <Ionicons name="time-outline" size={16} color="#666" />
                             <Text style={styles.cardDate}>
                                 Salvo em: {formatDate(item.createdAt)}
+                            </Text>
+                        </View>
+                    )}
+                    {item.editedAt && (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="create-outline" size={16} color="#666" />
+                            <Text style={styles.cardDate}>
+                                Editado em: {formatDateTime(item.editedAt)}
                             </Text>
                         </View>
                     )}
@@ -354,7 +456,7 @@ const ReportScreen = ({ route, navigation }) => {
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+                <ActivityIndicator size="large" color="#0B3A8F" />
                 <Text style={styles.loadingText}>Carregando relatórios...</Text>
             </View>
         );
@@ -401,13 +503,13 @@ const ReportScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     loadingText: {
         marginTop: 10,
@@ -463,8 +565,13 @@ const styles = StyleSheet.create({
         color: '#333',
         marginLeft: 10,
     },
+    cardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
     deleteButton: {
-        padding: 5,
+        padding: 8,
     },
     cardInfo: {
         marginBottom: 15,
@@ -523,7 +630,7 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     shareButton: {
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0B3A8F',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',

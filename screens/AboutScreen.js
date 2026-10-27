@@ -1,39 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useUser } from '../context/UserContext';
 
 const AboutScreen = () => {
-    const { user, logout } = useUser();
-
     const openLink = (url) => {
         Linking.openURL(url).catch(err => console.error('Erro ao abrir link:', err));
-    };
-
-    const handleLogout = () => {
-        Alert.alert(
-            'Sair',
-            'Tem certeza que deseja sair do aplicativo?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Sair', style: 'destructive', onPress: logout }
-            ]
-        );
     };
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             {/* Header */}
             <View style={styles.header}>
-                <Ionicons name="information-circle" size={80} color="#007AFF" />
-                <Text style={styles.appName}>QOP App</Text>
+                <Ionicons name="information-circle" size={80} color="#0B3A8F" />
+                <Text style={styles.appName}>Q&OP</Text>
                 <Text style={styles.version}>Versão 1.0.0</Text>
             </View>
 
             {/* Desenvolvedor
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="person" size={24} color="#007AFF" />
+                    <Ionicons name="person" size={24} color="#0B3A8F" />
                     <Text style={styles.sectionTitle}>Desenvolvedor</Text>
                 </View>
                 <View style={styles.developerCard}>
@@ -45,7 +31,7 @@ const AboutScreen = () => {
             {/* Como Usar */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="book" size={24} color="#007AFF" />
+                    <Ionicons name="book" size={24} color="#0B3A8F" />
                     <Text style={styles.sectionTitle}>Como Usar</Text>
                 </View>
 
@@ -81,7 +67,7 @@ const AboutScreen = () => {
                         <View style={styles.stepContent}>
                             <Text style={styles.stepTitle}>Responder Perguntas</Text>
                             <Text style={styles.stepDescription}>
-                                Responda cada pergunta tocando em SIM ou NÃO. Adicione observações se necessário.
+                                Responda cada pergunta tocando em Conforme, N/C (não conforme) ou N/A (não se aplica). Adicione observações se necessário.
                             </Text>
                         </View>
                     </View>
@@ -127,7 +113,7 @@ const AboutScreen = () => {
             {/* Recursos */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="star" size={24} color="#007AFF" />
+                    <Ionicons name="star" size={24} color="#0B3A8F" />
                     <Text style={styles.sectionTitle}>Principais Recursos</Text>
                 </View>
 
@@ -166,7 +152,7 @@ const AboutScreen = () => {
             {/* Informações Técnicas */}
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Ionicons name="code-slash" size={24} color="#007AFF" />
+                    <Ionicons name="code-slash" size={24} color="#0B3A8F" />
                     <Text style={styles.sectionTitle}>Tecnologias</Text>
                 </View>
                 <View style={styles.techList}>
@@ -177,30 +163,9 @@ const AboutScreen = () => {
                 </View>
             </View>
 
-            {/* Informações do Usuário */}
-            {user && (
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Ionicons name="person-circle" size={24} color="#007AFF" />
-                        <Text style={styles.sectionTitle}>Usuário Logado</Text>
-                    </View>
-                    <View style={styles.userCard}>
-                        <Text style={styles.userName}>{user.name}</Text>
-                        <Text style={styles.userDetail}>Matrícula: {user.registration}</Text>
-                        <Text style={styles.userDetail}>E-mail: {user.email}</Text>
-                        <Text style={styles.userDetail}>Unidade: {user.unit}</Text>
-
-                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                            <Ionicons name="log-out-outline" size={24} color="#fff" />
-                            <Text style={styles.logoutButtonText}>Sair</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
-
             {/* Footer */}
             <View style={styles.footer}>
-                <Text style={styles.footerText}>© 2025 QOP App</Text>
+                <Text style={styles.footerText}>© 2025 Q&OP</Text>
                 <Text style={styles.footerText}>Desenvolvido  por Ivonildo Lima</Text>
                 <Text style={styles.footerSubtext}>Todos os direitos reservados</Text>
             </View>
@@ -211,7 +176,7 @@ const AboutScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#F3F5F8',
     },
     contentContainer: {
         padding: 20,
@@ -232,7 +197,7 @@ const styles = StyleSheet.create({
     appName: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#007AFF',
+        color: '#0B3A8F',
         marginTop: 15,
     },
     version: {
@@ -268,7 +233,7 @@ const styles = StyleSheet.create({
     developerName: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#007AFF',
+        color: '#0B3A8F',
         marginBottom: 5,
     },
     developerRole: {
@@ -293,7 +258,7 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#007AFF',
+        backgroundColor: '#0B3A8F',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 15,
@@ -352,43 +317,6 @@ const styles = StyleSheet.create({
         color: '#333',
         marginBottom: 8,
         lineHeight: 22,
-    },
-    userCard: {
-        backgroundColor: '#fff',
-        padding: 20,
-        borderRadius: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    userName: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#007AFF',
-        marginBottom: 10,
-        textAlign: 'center',
-    },
-    userDetail: {
-        fontSize: 15,
-        color: '#666',
-        marginBottom: 6,
-    },
-    logoutButton: {
-        backgroundColor: '#dc3545',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 15,
-        borderRadius: 10,
-        marginTop: 20,
-    },
-    logoutButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginLeft: 8,
     },
     footer: {
         alignItems: 'center',
